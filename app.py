@@ -19,7 +19,7 @@ import threading
 from queue import Queue
 import asyncio
 import websockets
-import schedule
+# import schedule
 from PIL import Image
 import io
 import smtplib
