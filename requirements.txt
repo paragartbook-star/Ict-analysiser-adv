@@ -4,16 +4,13 @@ numpy
 plotly
 yfinance
 pytz
-talib
 scipy
 requests
 pillow
-smtplib
 python-telegram-bot
 twilio
 discord.py
-pickle5
-hashlib
 scikit-learn
 tensorflow
 transformers
+pandas_ta
