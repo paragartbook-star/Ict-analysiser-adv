@@ -797,6 +797,15 @@ class MultiTimeframeAnalyzer:
 
 # ==================== ADVANCED TECHNICAL INDICATORS ====================
 
+def calculate_rsi(prices, period=14):
+    """Calculate RSI"""
+    delta = prices.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi.iloc[-1] if not rsi.empty else 50
+
 def calculate_vwap(df):
     """Calculate Volume Weighted Average Price"""
     typical_price = (df['High'] + df['Low'] + df['Close']) / 3
@@ -1529,16 +1538,16 @@ def render_dashboard():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total Assets", "150+", "Live")
+        st.metric("Total Assets", "150+", "Live", key="metric_assets")
     
     with col2:
-        st.metric("Active Alerts", "12", "3 New")
+        st.metric("Active Alerts", "12", "3 New", key="metric_alerts")
     
     with col3:
-        st.metric("Portfolio Value", "₹1,24,560", "+2.4%")
+        st.metric("Portfolio Value", "₹1,24,560", "+2.4%", key="metric_portfolio")
     
     with col4:
-        st.metric("Market Sentiment", "Bullish", "72%")
+        st.metric("Market Sentiment", "Bullish", "72%", key="metric_sentiment")
     
     # Market Overview
     st.markdown("## 📈 Market Overview")
@@ -1548,30 +1557,15 @@ def render_dashboard():
     with col1:
         # Quick analysis form
         with st.form("quick_analysis"):
-            symbol = st.text_input("Enter Symbol (e.g., RELIANCE.NS, BTC-USD):", "RELIANCE.NS")
-            timeframe = st.selectbox("Timeframe:", ["1d", "1wk", "1mo", "3mo"])
-            analyze_button = st.form_submit_button("🚀 Analyze Now")
+            symbol = st.text_input("Enter Symbol (e.g., RELIANCE.NS, BTC-USD):", "RELIANCE.NS", key="quick_symbol")
+            timeframe = st.selectbox("Timeframe:", ["1d", "1wk", "1mo", "3mo"], key="quick_timeframe")
+            analyze_button = st.form_submit_button("🚀 Analyze Now", type="primary")
             
             if analyze_button:
                 with st.spinner("Analyzing..."):
                     result = quick_analysis(symbol, timeframe)
                     if result:
                         st.success(f"Analysis complete! Score: {result['score']}/100")
-    
-    with col2:
-        # Kill Zone Status
-        kill_zone = get_kill_zone()
-        st.markdown(f"""
-        <div class='killzone-{'active' if kill_zone['active'] else 'inactive'}'>
-            <h4>{kill_zone['name']}</h4>
-            <p>Multiplier: {kill_zone['multiplier']}x</p>
-            <p>Status: {'🟢 ACTIVE' if kill_zone['active'] else '⚪ INACTIVE'}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Top Recommendations
-    st.markdown("## 🏆 Top Recommendations")
-    display_top_recommendations()
 
 def render_advanced_analysis():
     """Render advanced analysis section"""
@@ -1581,12 +1575,13 @@ def render_advanced_analysis():
     analysis_type = st.selectbox(
         "Select Analysis Type:",
         ["ICT Pattern Detection", "Multi-Timeframe Analysis", "Volume Profile", 
-         "Market Structure", "Fibonacci Analysis", "Order Flow"]
+         "Market Structure", "Fibonacci Analysis", "Order Flow"],
+        key="analysis_type"
     )
     
-    symbol = st.text_input("Symbol for Analysis:", "RELIANCE.NS")
+    symbol = st.text_input("Symbol for Analysis:", "RELIANCE.NS", key="advanced_symbol")
     
-    if st.button("Run Advanced Analysis", type="primary"):
+    if st.button("Run Advanced Analysis", type="primary", key="run_advanced_analysis"):
         with st.spinner("Running deep analysis..."):
             if analysis_type == "ICT Pattern Detection":
                 analyze_ict_patterns(symbol)
@@ -1608,29 +1603,32 @@ def render_live_charts():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        symbol = st.text_input("Chart Symbol:", "RELIANCE.NS")
+        symbol = st.text_input("Chart Symbol:", "RELIANCE.NS", key="chart_symbol")
     
     with col2:
         timeframe = st.selectbox(
             "Timeframe:",
             ["1m", "5m", "15m", "1h", "4h", "1d", "1wk"],
-            index=5
+            index=5,
+            key="chart_timeframe"
         )
     
     with col3:
         chart_type = st.selectbox(
             "Chart Type:",
-            ["Candlestick", "Heikin-Ashi", "Renko", "Line", "Area"]
+            ["Candlestick", "Heikin-Ashi", "Renko", "Line", "Area"],
+            key="chart_type"
         )
     
     # Indicators selector
     indicators = st.multiselect(
         "Add Indicators:",
         ["EMA", "SMA", "Bollinger Bands", "RSI", "MACD", "Volume", "VWAP", 
-         "Ichimoku Cloud", "ATR Bands", "Pivot Points", "Fibonacci Levels"]
+         "Ichimoku Cloud", "ATR Bands", "Pivot Points", "Fibonacci Levels"],
+        key="chart_indicators"
     )
     
-    if st.button("Generate Chart", type="primary"):
+    if st.button("Generate Chart", type="primary", key="generate_chart"):
         with st.spinner("Loading chart..."):
             fig = create_advanced_chart(symbol, timeframe, chart_type, indicators)
             if fig:
@@ -1645,23 +1643,25 @@ def render_alerts():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            alert_symbol = st.text_input("Symbol:", "RELIANCE.NS")
+            alert_symbol = st.text_input("Symbol:", "RELIANCE.NS", key="alert_symbol")
         
         with col2:
             condition_type = st.selectbox(
                 "Condition:",
-                ["price_above", "price_below", "rsi_above", "rsi_below", "volume_spike"]
+                ["price_above", "price_below", "rsi_above", "rsi_below", "volume_spike"],
+                key="alert_condition"
             )
         
         with col3:
-            condition_value = st.number_input("Value:", value=100.0)
+            condition_value = st.number_input("Value:", value=100.0, key="alert_value")
         
         notification_type = st.selectbox(
             "Notification Type:",
-            ["browser", "email", "telegram", "discord"]
+            ["browser", "email", "telegram", "discord"],
+            key="alert_notification"
         )
         
-        if st.button("Create Alert", type="primary"):
+        if st.button("Create Alert", type="primary", key="create_alert"):
             alert_id = st.session_state.alert_system.create_alert(
                 alert_symbol, condition_type, condition_value, notification_type
             )
@@ -1685,18 +1685,18 @@ def render_portfolio():
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            pos_symbol = st.text_input("Symbol:", "RELIANCE.NS")
+            pos_symbol = st.text_input("Symbol:", "RELIANCE.NS", key="pos_symbol")
         
         with col2:
-            pos_quantity = st.number_input("Quantity:", min_value=1, value=10)
+            pos_quantity = st.number_input("Quantity:", min_value=1, value=10, key="pos_quantity")
         
         with col3:
-            pos_entry = st.number_input("Entry Price:", min_value=0.0, value=2400.0)
+            pos_entry = st.number_input("Entry Price:", min_value=0.0, value=2400.0, key="pos_entry")
         
         with col4:
-            pos_type = st.selectbox("Type:", ["Stock", "Crypto", "Forex", "Other"])
+            pos_type = st.selectbox("Type:", ["Stock", "Crypto", "Forex", "Other"], key="pos_type")
         
-        if st.button("Add to Portfolio", type="primary"):
+        if st.button("Add to Portfolio", type="primary", key="add_position"):
             st.session_state.portfolio_manager.add_position(
                 pos_symbol, pos_quantity, pos_entry, pos_type
             )
@@ -1705,14 +1705,16 @@ def render_portfolio():
     # Portfolio summary
     st.markdown("### Portfolio Summary")
     if st.session_state.portfolio_manager.positions:
-        summary = st.session_state.portfolio_manager.update_prices({})
+        # Create dummy price data for demonstration
+        price_data = {pos['symbol']: pos['entry_price'] * 1.05 for pos in st.session_state.portfolio_manager.positions}
+        summary = st.session_state.portfolio_manager.update_prices(price_data)
         
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Value", f"₹{summary['total_value']:,.2f}")
+        col1.metric("Total Value", f"₹{summary['total_value']:,.2f}", key="portfolio_value")
         col2.metric("Total P&L", f"₹{summary['total_pnl']:,.2f}", 
-                   f"{summary['total_pnl_percent']:.2f}%")
-        col3.metric("Cash Balance", f"₹{summary['cash']:,.2f}")
-        col4.metric("Positions", len(st.session_state.portfolio_manager.positions))
+                   f"{summary['total_pnl_percent']:.2f}%", key="portfolio_pnl")
+        col3.metric("Cash Balance", f"₹{summary['cash']:,.2f}", key="portfolio_cash")
+        col4.metric("Positions", len(st.session_state.portfolio_manager.positions), key="portfolio_count")
         
         # Positions table
         positions_df = pd.DataFrame(st.session_state.portfolio_manager.positions)
@@ -1726,40 +1728,40 @@ def render_settings():
     
     # Theme settings
     with st.expander("Theme Settings", expanded=True):
-        theme = st.selectbox("Theme:", ["Dark", "Light", "Auto"])
-        accent_color = st.color_picker("Accent Color:", "#00f3ff")
-        st.button("Apply Theme", type="primary")
+        theme = st.selectbox("Theme:", ["Dark", "Light", "Auto"], key="theme_select")
+        accent_color = st.color_picker("Accent Color:", "#00f3ff", key="accent_color")
+        st.button("Apply Theme", type="primary", key="apply_theme")
     
     # Notification settings
     with st.expander("Notification Settings"):
-        email_notifications = st.checkbox("Email Notifications", value=False)
+        email_notifications = st.checkbox("Email Notifications", value=False, key="email_notify")
         if email_notifications:
-            st.text_input("Email Address:")
-            st.text_input("SMTP Server:", "smtp.gmail.com")
-            st.number_input("SMTP Port:", value=587)
+            st.text_input("Email Address:", key="email_address")
+            st.text_input("SMTP Server:", "smtp.gmail.com", key="smtp_server")
+            st.number_input("SMTP Port:", value=587, key="smtp_port")
         
-        telegram_notifications = st.checkbox("Telegram Notifications", value=False)
+        telegram_notifications = st.checkbox("Telegram Notifications", value=False, key="telegram_notify")
         if telegram_notifications:
-            st.text_input("Bot Token:")
-            st.text_input("Chat ID:")
+            st.text_input("Bot Token:", key="telegram_token")
+            st.text_input("Chat ID:", key="telegram_chat")
         
-        discord_notifications = st.checkbox("Discord Notifications", value=False)
+        discord_notifications = st.checkbox("Discord Notifications", value=False, key="discord_notify")
         if discord_notifications:
-            st.text_input("Webhook URL:")
+            st.text_input("Webhook URL:", key="discord_webhook")
     
     # API Settings
     with st.expander("API Configuration"):
-        st.text_input("Yahoo Finance API Key (Optional):")
-        st.text_input("Alpha Vantage API Key (Optional):")
-        st.text_input("News API Key (Optional):")
+        st.text_input("Yahoo Finance API Key (Optional):", key="yahoo_api")
+        st.text_input("Alpha Vantage API Key (Optional):", key="alpha_api")
+        st.text_input("News API Key (Optional):", key="news_api")
     
     # Data settings
     with st.expander("Data Settings"):
-        refresh_interval = st.slider("Auto-refresh interval (seconds):", 10, 300, 60)
-        cache_duration = st.slider("Cache duration (minutes):", 5, 60, 15)
-        historical_data = st.number_input("Days of historical data:", 30, 365*5, 365)
+        refresh_interval = st.slider("Auto-refresh interval (seconds):", 10, 300, 60, key="refresh_interval")
+        cache_duration = st.slider("Cache duration (minutes):", 5, 60, 15, key="cache_duration")
+        historical_data = st.number_input("Days of historical data:", 30, 365*5, 365, key="historical_days")
     
-    if st.button("Save Settings", type="primary"):
+    if st.button("Save Settings", type="primary", key="save_settings"):
         st.success("Settings saved successfully!")
 
 # ==================== HELPER FUNCTIONS ====================
@@ -1827,7 +1829,8 @@ def display_top_recommendations():
             col1.markdown(f"**{rec['symbol']}**")
             col2.markdown(rec['name'])
             col3.markdown(f"**{rec['score']}**")
-            col4.markdown(f"<span class='signal-{'strong-buy' if 'STRONG' in rec['signal'] else 'buy'}'>{rec['signal']}</span>", unsafe_allow_html=True)
+            signal_class = 'signal-strong-buy' if 'STRONG' in rec['signal'] else 'signal-buy'
+            col4.markdown(f"<span class='{signal_class}'>{rec['signal']}</span>", unsafe_allow_html=True)
             col5.markdown(rec['reason'])
             st.divider()
 
@@ -1876,22 +1879,26 @@ def analyze_ict_patterns(symbol):
     with col2:
         st.markdown("### 📊 Pattern Statistics")
         
-        stats_df = pd.DataFrame({
+        # Create statistics dataframe
+        stats_data = {
             'Pattern Type': ['Breaker Blocks', 'Liquidity Sweeps', 'Asian Ranges', 
                            'Power of 3', 'Premium/Discount', 'OTE Zones', 'MSS'],
             'Count': [len(breaker_blocks), len(liquidity_sweeps), len(asian_ranges),
-                     len(power_of_3), len(premium_discount), len(ote_zones), len(market_structure_shifts)],
-            'Last Detected': [
-                breaker_blocks[-1]['date'].strftime('%Y-%m-%d') if breaker_blocks else 'N/A',
-                liquidity_sweeps[-1]['date'].strftime('%Y-%m-%d') if liquidity_sweeps else 'N/A',
-                asian_ranges[-1]['date'].strftime('%Y-%m-%d') if asian_ranges else 'N/A',
-                power_of_3[-1]['date'].strftime('%Y-%m-%d') if power_of_3 else 'N/A',
-                premium_discount[-1]['date'].strftime('%Y-%m-%d') if premium_discount else 'N/A',
-                ote_zones[-1]['date'].strftime('%Y-%m-%d') if ote_zones else 'N/A',
-                market_structure_shifts[-1]['date'].strftime('%Y-%m-%d') if market_structure_shifts else 'N/A'
-            ]
-        })
+                     len(power_of_3), len(premium_discount), len(ote_zones), len(market_structure_shifts)]
+        }
         
+        # Handle last detected dates safely
+        last_detected = []
+        for pattern_list in [breaker_blocks, liquidity_sweeps, asian_ranges, power_of_3, 
+                           premium_discount, ote_zones, market_structure_shifts]:
+            if pattern_list:
+                last_detected.append(pattern_list[-1]['date'].strftime('%Y-%m-%d'))
+            else:
+                last_detected.append('N/A')
+        
+        stats_data['Last Detected'] = last_detected
+        
+        stats_df = pd.DataFrame(stats_data)
         st.dataframe(stats_df, use_container_width=True)
 
 def analyze_multi_timeframe(symbol):
@@ -1911,7 +1918,7 @@ def analyze_multi_timeframe(symbol):
     
     with col1:
         st.markdown("### 📈 MTF Confluence")
-        st.metric("Confluence Score", f"{confluence['score']:.2f}")
+        st.metric("Confluence Score", f"{confluence['score']:.2f}", key="confluence_score")
         
         fig = go.Figure(data=[
             go.Bar(x=['Bullish', 'Bearish', 'Neutral'],
@@ -1923,7 +1930,7 @@ def analyze_multi_timeframe(symbol):
     
     with col2:
         st.markdown("### 🎯 HTF Bias")
-        st.metric("Higher Timeframe Bias", htf_bias)
+        st.metric("Higher Timeframe Bias", htf_bias, key="htf_bias")
         
         # Display timeframe details
         st.markdown("**Timeframe Details:**")
@@ -1943,10 +1950,38 @@ def analyze_multi_timeframe(symbol):
             st.warning("**NEUTRAL BIAS**")
             st.info("Wait for clearer direction")
 
+def analyze_volume_profile(symbol):
+    """Analyze volume profile"""
+    st.info("Volume Profile Analysis - Coming Soon!")
+
+def analyze_market_structure(symbol):
+    """Analyze market structure"""
+    st.info("Market Structure Analysis - Coming Soon!")
+
+def analyze_fibonacci(symbol):
+    """Analyze fibonacci levels"""
+    st.info("Fibonacci Analysis - Coming Soon!")
+
+def analyze_order_flow(symbol):
+    """Analyze order flow"""
+    st.info("Order Flow Analysis - Coming Soon!")
+
 def create_advanced_chart(symbol, timeframe, chart_type, indicators):
     """Create advanced chart with indicators"""
     try:
-        df = yf.download(symbol, period="1mo", interval=timeframe, progress=False)
+        # Determine period based on timeframe
+        period_map = {
+            '1m': '1d',
+            '5m': '5d',
+            '15m': '15d',
+            '1h': '1mo',
+            '4h': '3mo',
+            '1d': '6mo',
+            '1wk': '1y'
+        }
+        
+        period = period_map.get(timeframe, '1mo')
+        df = yf.download(symbol, period=period, interval=timeframe, progress=False)
         
         if df.empty:
             st.error("No data available")
