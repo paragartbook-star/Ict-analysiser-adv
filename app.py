@@ -9,7 +9,6 @@ import time
 import requests
 import warnings
 import pytz
-import talib
 from scipy import stats
 import json
 import base64
